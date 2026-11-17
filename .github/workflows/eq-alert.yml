@@ -1,4 +1,4 @@
-﻿name: EQ alert
+name: EQ alert
 
 on:
   schedule:
