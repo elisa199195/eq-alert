@@ -1,0 +1,44 @@
+name: EQ alert
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes (GitHub's minimum)
+  workflow_dispatch:          # manual run from the Actions tab
+    inputs:
+      test_notify:
+        description: "Send one test message to Feishu instead of polling"
+        type: boolean
+        default: false
+
+concurrency:
+  group: eq-alert
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Dedupe state between runs (one alert per quake).
+      - uses: actions/cache@v4
+        with:
+          path: state
+          key: eq-state-${{ github.run_id }}
+          restore-keys: |
+            eq-state-
+
+      - name: Poll P2PQuake
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+          TEST_NOTIFY: ${{ inputs.test_notify && '1' || '0' }}
+        run: node poll.mjs
